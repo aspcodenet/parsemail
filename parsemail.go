@@ -247,8 +247,16 @@ func parseMultipartMixed(msg io.Reader, boundary string) (textBody, htmlBody str
 			if err != nil {
 				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
-
-			textBody += strings.TrimSuffix(string(ppContent[:]), "\n")
+			if isAttachment(part) {
+				filename := decodeMimeSentence(part.FileName())
+				var at Attachment
+				at.Filename = filename
+				at.Data = bytes.NewReader(ppContent[:])
+				at.ContentType = strings.Split(part.Header.Get("Content-Type"), ";")[0]
+				attachments = append(attachments, at)
+			} else {
+				textBody += strings.TrimSuffix(string(ppContent[:]), "\n")
+			}
 		} else if contentType == contentTypeTextHtml {
 			ppContent, err := ioutil.ReadAll(part)
 			if err != nil {
@@ -483,7 +491,7 @@ type Email struct {
 	ResentMessageID string
 
 	ContentType string
-	Content io.Reader
+	Content     io.Reader
 
 	HTMLBody string
 	TextBody string
